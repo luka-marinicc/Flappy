@@ -1,28 +1,103 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="sl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="icon" type="image/x-icon" href="./assets/bird.png" />
-  </head>
-  <body>
-    <div class="game-container">
-      <div id="mainMenu" class="ui-layer">
-        <h1 class="title">Flappy</h1>
-        <p class="score-text">
-          Best Score: <span id="bestScoreDisplay">0</span>
-        </p>
-        <p class="score-text" id="currentScoreDisplay" style="display: none">
-          Score: <span id="lastScore">0</span>
-        </p>
-        <button id="startBtn">Start</button>
-      </div>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-      <canvas id="gameCanvas" width="288" height="512"></canvas>
+<div class="game-container">
+    <div id="menuBackground" class="retro-bg bg-surface" style="display: none;"></div>
+    
+    <div id="mainMenu" class="ui-layer">
+        <div class="retro-box">
+            <h1 class="title">Flappy</h1>
+            
+            <button id="startBtn" class="menu-btn primary-btn">START</button>
+            <button id="openCampaignBtn" class="menu-btn campaign-btn">CAMPAIGN</button>
+            <button id="openSettingsBtn" class="menu-btn secondary-btn">SETTINGS</button>
+            <button id="openScoreBtn" class="menu-btn tertiary-btn">SCORES</button>
+        </div>
     </div>
 
-    <script src="script.js"></script>
-  </body>
+    <div id="campaignMenu" class="ui-layer" style="display: none;">
+        <div class="retro-box">
+            <h2 class="settings-title" id="worldTitle">SURFACE</h2>
+            
+            <div class="level-container">
+                <div class="level-wrapper">
+                    <button class="level-btn" id="lvlBtn1">LEVEL 1</button>
+                    <div class="coin-display" id="coins1">
+                        <div class="coin"></div><div class="coin"></div><div class="coin"></div>
+                    </div>
+                </div>
+                <div class="level-wrapper">
+                    <button class="level-btn" id="lvlBtn2">LEVEL 2</button>
+                    <div class="coin-display" id="coins2">
+                        <div class="coin"></div><div class="coin"></div><div class="coin"></div>
+                    </div>
+                </div>
+                <div class="level-wrapper">
+                    <button class="level-btn boss-btn" id="lvlBtn3">BOSS 3</button>
+                    <div class="coin-display" id="coins3">
+                        <div class="coin"></div><div class="coin"></div><div class="coin"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pagination">
+                <button id="prevPageBtn" class="page-btn">&lt;</button>
+                <span id="pageIndicator" class="page-text">1/3</span>
+                <button id="nextPageBtn" class="page-btn">&gt;</button>
+            </div>
+
+            <button id="closeCampaignBtn" class="menu-btn primary-btn" style="margin-top: 2cqw;">BACK</button>
+        </div>
+    </div>
+
+    <div id="scoreMenu" class="ui-layer" style="display: none;">
+        <div class="retro-box">
+            <h2 class="settings-title">SCORES</h2>
+            
+            <div class="score-board">
+                <p class="score-label">BEST</p>
+                <p class="score-number" id="bestScoreDisplay">0</p>
+                
+                <div id="currentScoreContainer" style="display: none;">
+                    <p class="score-label" style="margin-top: 3cqw;">LAST SCORE</p>
+                    <p class="score-number" id="lastScore">0</p>
+                </div>
+            </div>
+
+            <button id="closeScoreBtn" class="menu-btn primary-btn" style="margin-top: 2cqw;">BACK</button>
+        </div>
+    </div>
+
+    <div id="settingsMenu" class="ui-layer" style="display: none;">
+        <div class="retro-box">
+            <h2 class="settings-title">SETTINGS</h2>
+            
+            <div class="setting-item">
+                <label>VOLUME</label>
+                <div class="retro-volume-control">
+                    <button id="volMinus" class="vol-btn">-</button>
+                    <div class="vol-display">
+                        <span id="volumeValue">50</span>%
+                    </div>
+                    <button id="volPlus" class="vol-btn">+</button>
+                </div>
+            </div>
+
+            <button id="closeSettingsBtn" class="menu-btn primary-btn" style="margin-top: 6cqw;">BACK</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" width="288" height="512"></canvas>
+</div>
+
+<script src="script.js"></script>
+</body>
 </html>
