@@ -2,30 +2,57 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Press Start 2P', cursive, monospace;
 }
 
 body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    height: 100vh; 
     background-color: #222;
+    margin: 0;
+    overflow: hidden; 
 }
 
 .game-container {
     position: relative;
-    width: 288px;
-    height: 512px;
+    height: 100vh;
+    max-width: 100vw; 
+    aspect-ratio: 288 / 512; 
     box-shadow: 0 0 20px rgba(0,0,0,0.8);
     overflow: hidden;
+    container-type: inline-size; 
 }
 
 canvas {
     display: block;
+    width: 100%;
+    height: 100%;
     image-rendering: pixelated; 
     image-rendering: crisp-edges;
 }
+
+/* Pure CSS Retro Screen to cover gameplay */
+.retro-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: repeating-linear-gradient(
+        transparent, 
+        transparent 4px, 
+        rgba(0, 0, 0, 0.15) 4px, 
+        rgba(0, 0, 0, 0.15) 8px
+    );
+    z-index: 5;
+    transition: background-color 0.3s;
+}
+
+.bg-surface { background-color: #4ec0ca; } 
+.bg-water   { background-color: #1a4975; } 
+.bg-lava    { background-color: #9e2a2b; } 
 
 .ui-layer {
     position: absolute;
@@ -37,39 +64,269 @@ canvas {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.5);
     z-index: 10;
+}
+
+/* Flappy Style Menu Box */
+.retro-box {
+    background-color: #ded895; 
+    border: 1cqw solid #543847; 
+    box-shadow: 
+        inset -1cqw -1cqw 0px rgba(0,0,0,0.15), 
+        2cqw 2cqw 0 rgba(0,0,0,0.4); 
+    border-radius: 2cqw;
+    padding: 8cqw 5cqw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 85cqw;
 }
 
 .title {
     color: white;
-    font-size: 48px;
-    text-shadow: 3px 3px 0 #000;
-    margin-bottom: 20px;
+    font-size: 11cqw;
+    text-align: center;
+    margin-bottom: 8cqw;
+    text-shadow: 
+        -0.8cqw -0.8cqw 0 #543847,
+         0.8cqw -0.8cqw 0 #543847,
+        -0.8cqw  0.8cqw 0 #543847,
+         0.8cqw  0.8cqw 0 #543847,
+         1.5cqw  1.5cqw 0 rgba(0,0,0,0.3);
 }
 
-.score-text {
+.settings-title {
     color: white;
-    font-size: 20px;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 0 #000;
-    font-weight: bold;
+    font-size: 7cqw;
+    text-align: center;
+    margin-bottom: 6cqw;
+    text-shadow: 
+        -0.6cqw -0.6cqw 0 #543847,
+         0.6cqw -0.6cqw 0 #543847,
+        -0.6cqw  0.6cqw 0 #543847,
+         0.6cqw  0.6cqw 0 #543847;
 }
 
-#startBtn {
-    padding: 10px 30px;
-    font-size: 24px;
-    font-weight: bold;
+/* Score Board inside the box */
+.score-board {
+    background-color: #cbb97a;
+    border: 0.8cqw solid #543847;
+    border-radius: 1cqw;
+    width: 100%;
+    padding: 4cqw;
+    margin-bottom: 6cqw;
+    box-shadow: inset 1cqw 1cqw 0 rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.score-label {
+    color: #e45c13;
+    font-size: 4cqw;
+    text-shadow: 0.4cqw 0.4cqw 0 #543847;
+    margin-bottom: 1.5cqw;
+}
+
+.score-number {
     color: white;
-    background-color: #e45c13;
-    border: 3px solid white;
-    border-radius: 5px;
+    font-size: 6cqw;
+    text-shadow: 
+        -0.4cqw -0.4cqw 0 #543847,
+         0.4cqw -0.4cqw 0 #543847,
+        -0.4cqw  0.4cqw 0 #543847,
+         0.4cqw  0.4cqw 0 #543847;
+}
+
+/* ARCADE BUTTONS */
+.menu-btn {
+    padding: 3cqw 2cqw;
+    font-size: 5cqw;
+    border: 0.8cqw solid #543847;
+    border-radius: 1cqw;
     cursor: pointer;
-    margin-top: 20px;
-    box-shadow: 3px 3px 0 #000;
-    transition: transform 0.1s;
+    margin-top: 3cqw;
+    width: 100%; 
+    box-shadow: inset -1cqw -1.5cqw 0px rgba(0,0,0,0.2), 0.5cqw 1cqw 0 #543847;
+    transition: transform 0.05s, box-shadow 0.05s;
+    text-align: center;
+    color: white;
+    text-shadow: 0.4cqw 0.4cqw 0 #543847;
 }
 
-#startBtn:active {
-    transform: scale(0.95);
+.menu-btn:active {
+    transform: translateY(1cqw);
+    box-shadow: inset -1cqw -0.5cqw 0px rgba(0,0,0,0.2), 0cqw 0cqw 0 #543847;
+}
+
+.primary-btn { background-color: #e45c13; } 
+.secondary-btn { background-color: #73bf2e; } 
+.campaign-btn { background-color: #a22ebf; } 
+.tertiary-btn { 
+    background-color: #ffd04b; 
+    color: #543847; 
+    text-shadow: none; 
+}
+
+/* --- CAMPAIGN UI ELEMENTS --- */
+.level-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2cqw; /* Zmanjšan razmak, ker so sedaj gumbi večji zaradi kovancev */
+    width: 100%;
+}
+
+.level-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.level-btn {
+    padding: 3.5cqw;
+    font-size: 4.5cqw;
+    border: 0.8cqw solid #543847;
+    border-radius: 1cqw;
+    cursor: pointer;
+    box-shadow: inset -1cqw -1.5cqw 0px rgba(0,0,0,0.2), 0.5cqw 1cqw 0 #543847;
+    text-align: center;
+    color: white;
+    background-color: #4ec0ca; 
+    text-shadow: 0.4cqw 0.4cqw 0 #543847;
+    width: 100%;
+    z-index: 2; /* Gumb je nad ploščico s kovanci */
+    position: relative;
+}
+
+.level-btn:active:not(:disabled) {
+    transform: translateY(1cqw);
+    box-shadow: inset -1cqw -0.5cqw 0px rgba(0,0,0,0.2), 0cqw 0cqw 0 #543847;
+}
+
+.boss-btn {
+    background-color: #d11f1f; 
+    color: #ffd04b; 
+}
+
+/* Odklepanje/Zaklepanje stopenj */
+.level-btn:disabled {
+    background-color: #8b857a;
+    color: #a39d91;
+    border-color: #543847;
+    text-shadow: none;
+    box-shadow: inset -1cqw -1.5cqw 0px rgba(0,0,0,0.1), 0.5cqw 1cqw 0 #543847;
+    cursor: not-allowed;
+}
+
+/* Prikaz kovancev pod gumbom */
+.coin-display {
+    display: flex;
+    gap: 3cqw;
+    background-color: #543847; /* Temna podlaga plošče */
+    padding: 2cqw 4cqw;
+    border-radius: 0 0 1.5cqw 1.5cqw;
+    margin-top: -0.5cqw; /* Potegne ploščo gor, da se drži gumba */
+    z-index: 1;
+}
+
+.coin {
+    width: 4cqw;
+    height: 4cqw;
+    border-radius: 50%;
+    background-color: #2a1c23; /* Temen "prazen" kovanec */
+    border: 0.5cqw solid #1a1015;
+    box-shadow: inset 0.5cqw 0.5cqw 0 rgba(0,0,0,0.5);
+    transition: all 0.3s;
+}
+
+.coin.collected {
+    background-color: #ffd04b; /* Zlat kovanec */
+    border: 0.5cqw solid #fff;
+    box-shadow: inset -0.8cqw -0.8cqw 0 #d9a01c, 0 0 1cqw rgba(255, 208, 75, 0.5); /* Sijaj */
+}
+
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 3cqw;
+    margin-bottom: 2cqw;
+}
+
+.page-btn {
+    width: 12cqw;
+    height: 12cqw;
+    font-size: 6cqw;
+    background-color: #ffd04b;
+    color: #543847;
+    border: 0.8cqw solid #543847;
+    border-radius: 1cqw;
+    cursor: pointer;
+    box-shadow: inset -0.8cqw -1cqw 0px rgba(0,0,0,0.2), 0.5cqw 0.5cqw 0 #543847;
+}
+
+.page-btn:active:not(:disabled) {
+    transform: translateY(0.5cqw);
+    box-shadow: inset -0.8cqw -0.5cqw 0px rgba(0,0,0,0.2), 0cqw 0cqw 0 #543847;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-text {
+    color: #543847;
+    font-size: 4cqw;
+}
+
+/* SETTINGS */
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #543847; 
+    font-size: 5cqw;
+    width: 100%;
+}
+
+.setting-item label {
+    margin-bottom: 4cqw;
+    text-align: center;
+}
+
+.retro-volume-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.vol-btn {
+    background-color: #e45c13; 
+    border: 0.8cqw solid #543847;
+    border-radius: 1cqw;
+    color: white;
+    font-size: 5cqw;
+    width: 12cqw;
+    height: 12cqw;
+    cursor: pointer;
+    box-shadow: inset -0.8cqw -1cqw 0px rgba(0,0,0,0.2), 0.5cqw 0.5cqw 0 #543847;
+    text-shadow: 0.4cqw 0.4cqw 0 #543847;
+}
+
+.vol-btn:active {
+    transform: translateY(0.5cqw);
+    box-shadow: inset -0.8cqw -0.5cqw 0px rgba(0,0,0,0.2), 0cqw 0cqw 0 #543847;
+}
+
+.vol-display {
+    width: 35cqw;
+    text-align: center;
+    font-size: 5cqw;
+    color: #543847;
+    background-color: #cbb97a;
+    border: 0.8cqw solid #543847;
+    padding: 2cqw;
+    box-shadow: inset 1cqw 1cqw 0 rgba(0,0,0,0.1);
 }
