@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="assets/textures/bird.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -58,6 +59,34 @@
         </div>
     </div>
 
+    <div id="campaignGameOverMenu" class="ui-layer" style="display: none;">
+        <div class="retro-box">
+            <h2 class="settings-title" style="color: #d11f1f;">GAME OVER</h2>
+            <div class="progress-container">
+                <p class="score-label" style="color: white; margin-bottom: 2cqw;">PROGRESS:</p>
+                <p class="score-number" id="campaignProgressText">0%</p>
+            </div>
+            
+            <button id="retryCampaignBtn" class="menu-btn secondary-btn" style="margin-top: 4cqw;">RETRY</button>
+            <button id="campaignToMenuBtn" class="menu-btn primary-btn">MAIN MENU</button>
+        </div>
+    </div>
+
+    <div id="levelCompleteMenu" class="ui-layer" style="display: none;">
+        <div class="retro-box">
+            <h2 class="settings-title" style="color: #ffd04b; font-size: 6cqw; line-height: 1.5;">LEVEL<br>COMPLETE!</h2>
+            
+            <div class="coin-display" style="margin: 4cqw 0 6cqw 0; background: transparent; padding: 0; box-shadow: none;">
+                <div class="coin" id="victoryCoin0" style="width: 8cqw; height: 8cqw;"></div>
+                <div class="coin" id="victoryCoin1" style="width: 8cqw; height: 8cqw;"></div>
+                <div class="coin" id="victoryCoin2" style="width: 8cqw; height: 8cqw;"></div>
+            </div>
+            
+            <button id="nextLevelBtn" class="menu-btn secondary-btn">NEXT LEVEL</button>
+            <button id="victoryToMenuBtn" class="menu-btn primary-btn">MAIN MENU</button>
+        </div>
+    </div>
+
     <div id="scoreMenu" class="ui-layer" style="display: none;">
         <div class="retro-box">
             <h2 class="settings-title">SCORES</h2>
@@ -81,17 +110,37 @@
             <h2 class="settings-title">SETTINGS</h2>
             
             <div class="setting-item">
-                <label>VOLUME</label>
+                <label>MUSIC VOLUME</label>
                 <div class="retro-volume-control">
-                    <button id="volMinus" class="vol-btn">-</button>
+                    <button id="musicVolMinus" class="vol-btn">-</button>
                     <div class="vol-display">
-                        <span id="volumeValue">50</span>%
+                        <span id="musicVolumeValue">50</span>%
                     </div>
-                    <button id="volPlus" class="vol-btn">+</button>
+                    <button id="musicVolPlus" class="vol-btn">+</button>
                 </div>
             </div>
 
-            <button id="closeSettingsBtn" class="menu-btn primary-btn" style="margin-top: 6cqw;">BACK</button>
+            <div class="setting-item">
+                <label>SFX VOLUME</label>
+                <div class="retro-volume-control">
+                    <button id="sfxVolMinus" class="vol-btn">-</button>
+                    <div class="vol-display">
+                        <span id="sfxVolumeValue">50</span>%
+                    </div>
+                    <button id="sfxVolPlus" class="vol-btn">+</button>
+                </div>
+            </div>
+
+            <button id="closeSettingsBtn" class="menu-btn primary-btn" style="margin-top: 4cqw;">BACK</button>
+        </div>
+    </div>
+
+    <div id="campaignUI" class="ui-layer" style="display: none; justify-content: flex-start; padding-top: 6cqw; pointer-events: none; background: transparent;">
+        <div class="progress-bar-container">
+            <div id="progressFill" class="progress-bar-fill"></div>
+            <div class="progress-coin-marker" id="uiCoin0" style="left: 25%;"></div>
+            <div class="progress-coin-marker" id="uiCoin1" style="left: 50%;"></div>
+            <div class="progress-coin-marker" id="uiCoin2" style="left: 75%;"></div>
         </div>
     </div>
 
