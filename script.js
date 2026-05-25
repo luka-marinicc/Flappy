@@ -47,9 +47,13 @@ backgroundImg.src = 'assets/background.png';
 const flapSound = new Audio('assets/flap.wav');
 const scoreSound = new Audio('assets/score.wav');
 const hitSound = new Audio('assets/hit.wav');
-const bgMusic = new Audio('assets/music.wav');
 
+// Glasba
+const bgMusic = new Audio('assets/music.wav');
 bgMusic.loop = true;
+
+const endlessMusic = new Audio('assets/endless.wav');
+endlessMusic.loop = true;
 
 // Varen ovitek za localStorage 
 const storage = {
@@ -63,9 +67,25 @@ const storage = {
     }
 };
 
+// --- SPREMENLJIVKE IGRE ---
+let frames = 0;
+let gameState = 'MENU'; // 'MENU', 'READY', 'PLAYING', 'GAMEOVER'
+let score = 0;
+let bestScore = storage.get('bestScore') || 0;
+bestScoreDisplay.innerText = bestScore;
+
+let flashAlpha = 0; 
+let blackFadeAlpha = 0; 
+
+// Dinamična hitrost (POPRAVLJENO)
+let gameSpeed = 2; 
+let pipeSpawnTimer = 0; 
+const maxGameSpeed = 4.2; // Znižana absolutna maksimalna hitrost
+
 // Nastavitve glasnosti
 let savedVolume = storage.get('gameVolume');
 let currentVolume = savedVolume !== null ? parseFloat(savedVolume) : 0.5;
+let currentFadeInterval = null;
 
 function updateVolumeDisplay() {
     volumeValue.innerText = Math.round(currentVolume * 100);
@@ -75,15 +95,57 @@ function updateVolumes() {
     flapSound.volume = currentVolume;
     scoreSound.volume = currentVolume;
     hitSound.volume = currentVolume;
-    bgMusic.volume = currentVolume;
+    
+    if (!currentFadeInterval) {
+        if (gameState === 'PLAYING' || gameState === 'READY') {
+            endlessMusic.volume = currentVolume;
+            bgMusic.volume = 0;
+        } else {
+            bgMusic.volume = currentVolume;
+            endlessMusic.volume = 0;
+        }
+    }
 }
 
-// Inicializiraj glasnosti in prikaz ob zagonu
+// Fade in/out logika za gladko menjavo glasbe
+function crossfadeMusic(fadeOutAudio, fadeInAudio) {
+    if (currentFadeInterval) clearInterval(currentFadeInterval);
+    
+    if (fadeInAudio) {
+        fadeInAudio.volume = 0;
+        fadeInAudio.play().catch(()=>{});
+    }
+    
+    let fadeStep = 0.05; 
+    
+    currentFadeInterval = setInterval(() => {
+        let fadeComplete = true;
+        
+        if (fadeOutAudio && fadeOutAudio.volume > 0) {
+            let newVol = fadeOutAudio.volume - fadeStep;
+            fadeOutAudio.volume = newVol < 0 ? 0 : newVol;
+            fadeComplete = false;
+        } else if (fadeOutAudio && fadeOutAudio.volume === 0 && !fadeOutAudio.paused) {
+            fadeOutAudio.pause();
+        }
+        
+        if (fadeInAudio && fadeInAudio.volume < currentVolume) {
+            let newVol = fadeInAudio.volume + fadeStep;
+            fadeInAudio.volume = newVol > currentVolume ? currentVolume : newVol;
+            fadeComplete = false;
+        }
+        
+        if (fadeComplete) {
+            clearInterval(currentFadeInterval);
+            currentFadeInterval = null;
+        }
+    }, 50);
+}
+
 updateVolumeDisplay();
 updateVolumes();
 
 // --- UI NAVIGACIJA ---
-
 openSettingsBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     settingsMenu.style.display = 'flex';
@@ -104,9 +166,7 @@ closeScoreBtn.addEventListener('click', () => {
     mainMenu.style.display = 'flex';
 });
 
-
 // --- CAMPAIGN LOGIKA ---
-
 let defaultProgress = {
     1: { unlocked: true,  coins: [true, true, false] }, 
     2: { unlocked: true,  coins: [false, false, false] },
@@ -175,7 +235,7 @@ function updateCampaignUI() {
 openCampaignBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     campaignMenu.style.display = 'flex';
-    menuBackground.style.display = 'block'; // Pokažemo barvno CSS ozadje
+    menuBackground.style.display = 'block'; 
     currentCampaignPage = 0; 
     updateCampaignUI();
 });
@@ -183,7 +243,7 @@ openCampaignBtn.addEventListener('click', () => {
 closeCampaignBtn.addEventListener('click', () => {
     campaignMenu.style.display = 'none';
     mainMenu.style.display = 'flex';
-    menuBackground.style.display = 'none'; // Skrijemo barvno ozadje in spet pokažemo animiran canvas
+    menuBackground.style.display = 'none'; 
 });
 
 prevPageBtn.addEventListener('click', () => {
@@ -229,22 +289,15 @@ volPlus.addEventListener('click', () => {
     applyVolumeChange();
 });
 
-// --- SPREMENLJIVKE IGRE ---
-let frames = 0;
-let gameState = 'MENU'; // 'MENU', 'READY', 'PLAYING', 'GAMEOVER'
-let score = 0;
-let bestScore = storage.get('bestScore') || 0;
-bestScoreDisplay.innerText = bestScore;
-
-let flashAlpha = 0; 
-let blackFadeAlpha = 0; 
-const gameSpeed = 2; 
-
 function tryPlayMusic() {
     if (gameState === 'MENU') {
+        bgMusic.volume = currentVolume;
         bgMusic.play().catch(() => {
             document.addEventListener('click', () => {
-                if (gameState === 'MENU') bgMusic.play().catch(() => {});
+                if (gameState === 'MENU') {
+                    bgMusic.volume = currentVolume;
+                    bgMusic.play().catch(() => {});
+                }
             }, { once: true });
         });
     }
@@ -259,16 +312,15 @@ const backgroundLayer = {
     y: 0,
     width: scaledImageWidth,
     height: 512,
-    dx: 0.5, 
     
     draw: function() {
         ctx.drawImage(backgroundImg, this.x, this.y, this.width, this.height);
         ctx.drawImage(backgroundImg, this.x + this.width, this.y, this.width, this.height);
     },
     update: function() {
-        // Ozadje se premika vedno, razen ko smo mrtvi
         if (gameState === 'PLAYING' || gameState === 'MENU' || gameState === 'READY') {
-            this.x -= this.dx;
+            let currentDx = (gameState === 'PLAYING') ? gameSpeed * 0.25 : 0.5;
+            this.x -= currentDx;
             if (this.x <= -this.width) {
                 this.x = 0;
             }
@@ -281,22 +333,20 @@ const floorLayer = {
     y: 0, 
     width: scaledImageWidth,
     height: 512,
-    dx: gameSpeed, 
     
     draw: function() {
         ctx.drawImage(floorImg, this.x, this.y, this.width, this.height);
         ctx.drawImage(floorImg, this.x + this.width, this.y, this.width, this.height);
     },
     update: function() {
-        // Tla se premikajo vedno, razen ko smo mrtvi
         if (gameState === 'PLAYING' || gameState === 'MENU' || gameState === 'READY') {
-            this.x -= this.dx;
+            let currentDx = (gameState === 'PLAYING') ? gameSpeed : 2;
+            this.x -= currentDx;
             if (this.x <= -this.width) {
                 this.x = 0;
             }
         }
         
-        // Trki s tlemi se preverjajo samo, če je igra v teku ali med padcem
         if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
             const hitGroundY = canvas.height * 0.75; 
             const bh = bird.getHitbox();
@@ -347,11 +397,9 @@ const bird = {
         ctx.restore();
     },
     update: function() {
-        // Zibanje v meniju!
         if (gameState === 'MENU' || gameState === 'READY') {
             this.y = 150 + Math.sin(Date.now() / 200) * 5;
         } 
-        // Padanje med igro in po smrti
         else if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
             this.velocity += this.gravity;
             this.y += this.velocity;
@@ -383,7 +431,6 @@ const pipes = {
     items: [],
     width: 52,
     gap: 120, 
-    dx: gameSpeed, 
     
     draw: function() {
         for (let i = 0; i < this.items.length; i++) {
@@ -401,7 +448,10 @@ const pipes = {
     update: function() {
         if (gameState !== 'PLAYING') return; 
 
-        if (frames % 100 === 0) {
+        pipeSpawnTimer += gameSpeed; 
+        if (pipeSpawnTimer >= 220) {
+            pipeSpawnTimer = 0; 
+            
             let hitGroundY = canvas.height * 0.75; 
             let minPipeHeight = 50; 
             let maxY = hitGroundY - this.gap - minPipeHeight; 
@@ -410,13 +460,14 @@ const pipes = {
             
             this.items.push({
                 x: canvas.width,
-                y: randomY
+                y: randomY,
+                passed: false 
             });
         }
 
         for (let i = 0; i < this.items.length; i++) {
             let p = this.items[i];
-            p.x -= this.dx;
+            p.x -= gameSpeed; 
 
             const bh = bird.getHitbox(); 
             const top_pipe_tip = p.y;
@@ -428,8 +479,9 @@ const pipes = {
                 }
             }
 
-            if (p.x === bird.x) {
+            if (p.x + this.width < bird.x && !p.passed) {
                 score++;
+                p.passed = true; 
                 scoreSound.currentTime = 0;
                 scoreSound.play().catch(e => {});
             }
@@ -452,7 +504,9 @@ function gameOver() {
     hitSound.play().catch(e => {});
     flashAlpha = 1; 
     
-    bgMusic.pause(); 
+    if(currentFadeInterval) clearInterval(currentFadeInterval);
+    endlessMusic.pause();
+    endlessMusic.currentTime = 0;
     
     if (score > bestScore) {
         bestScore = score;
@@ -470,12 +524,11 @@ function gameOver() {
             if (blackFadeAlpha >= 1) {
                 clearInterval(fadeInterval);
                 
-                // Ponastavimo igro v ozadju, da bo ob zagonu menija že tekla lepa animacija
                 bird.reset();
                 pipes.reset();
                 gameState = 'MENU';
                 
-                menuBackground.style.display = 'none'; // Odstranimo CSS ozadje, da pokažemo canvas
+                menuBackground.style.display = 'none'; 
                 
                 mainMenu.style.transition = 'none';
                 mainMenu.style.opacity = '0';
@@ -488,8 +541,7 @@ function gameOver() {
                     blackFadeAlpha = 0; 
                 });
                 
-                bgMusic.currentTime = 0;
-                bgMusic.play().catch(e => {});
+                crossfadeMusic(null, bgMusic);
             }
         }, 30);
     }, 1200);
@@ -500,6 +552,10 @@ function resetGame() {
     pipes.reset();
     score = 0;
     frames = 0;
+    
+    gameSpeed = 2; 
+    pipeSpawnTimer = 0;
+    
     flashAlpha = 0;
     blackFadeAlpha = 0; 
     gameState = 'READY'; 
@@ -517,8 +573,7 @@ function resetGame() {
             menu.style.transition = 'none';
         });
         
-        bgMusic.pause();
-        bgMusic.currentTime = 0;
+        crossfadeMusic(bgMusic, endlessMusic);
         gameState = 'PLAYING'; 
     }, 400); 
 }
@@ -550,7 +605,13 @@ function draw(now) {
         bird.draw();
 
         if (gameState === 'PLAYING' || gameState === 'GAMEOVER' || gameState === 'READY') {
-            if (gameState === 'PLAYING') frames++;
+            if (gameState === 'PLAYING') {
+                frames++;
+                // Počasi, a vztrajno pospešujemo igro do max omejitve (veliko počasneje kot prej)
+                if (gameSpeed < maxGameSpeed) {
+                    gameSpeed += 0.0002; 
+                }
+            }
 
             ctx.fillStyle = 'white';
             ctx.strokeStyle = 'black';
@@ -597,5 +658,8 @@ function checkAssets() {
     }
 }
 
-floorImg.onload = checkAssets;
-backgroundImg.onload = checkAssets;
+if (floorImg.complete) checkAssets();
+else floorImg.onload = checkAssets;
+
+if (backgroundImg.complete) checkAssets();
+else backgroundImg.onload = checkAssets;
