@@ -62,6 +62,10 @@ coinImg.src = 'assets/textures/coin.png';
 const lvl1BgImg = new Image();
 lvl1BgImg.src = 'assets/backgrounds/level1.png';
 
+// DODANO: Level 2 Ozadje
+const lvl2BgImg = new Image();
+lvl2BgImg.src = 'assets/backgrounds/level2.png';
+
 // Nalaganje zvokov
 const flapSound = new Audio('assets/sounds/flap.wav');
 const scoreSound = new Audio('assets/sounds/score.wav'); 
@@ -205,10 +209,9 @@ closeScoreBtn.addEventListener('click', () => {
     mainMenu.style.display = 'flex';
 });
 
-// POPRAVLJENA FUNKCIJA ZA VRNITEV V MENI
 function backToMainMenu() {
-    gameState = 'MENU'; // Povemo igri, da se spet nahaja v meniju
-    bird.reset();       // Ponastavimo ptiča, da spet lebdi
+    gameState = 'MENU'; 
+    bird.reset();       
     pipes.reset();
     coins.reset();
     
@@ -216,7 +219,7 @@ function backToMainMenu() {
     menus.forEach(m => m.style.display = 'none');
     
     menuBackground.className = 'retro-bg bg-surface';
-    menuBackground.style.backgroundColor = ''; // Počistimo zlato barvo od zmage
+    menuBackground.style.backgroundColor = ''; 
     menuBackground.style.display = 'none';
     
     mainMenu.style.transition = 'none';
@@ -392,7 +395,7 @@ tryPlayMusic();
 
 // --- SCROLLING OBJEKTI ---
 const scaledBgWidth = Math.ceil((1920 / 1085) * 512); 
-const scaledLvl1BgWidth = Math.ceil((576 / 324) * 512); 
+const scaledCampaignBgWidth = Math.ceil((576 / 324) * 512); 
 
 const backgroundLayer = {
     x: 0,
@@ -402,9 +405,14 @@ const backgroundLayer = {
         let imgToDraw = backgroundImg;
         let w = scaledBgWidth;
         
-        if (gameMode === 'CAMPAIGN' && currentLevel === 1) {
-            imgToDraw = lvl1BgImg;
-            w = scaledLvl1BgWidth;
+        if (gameMode === 'CAMPAIGN') {
+            if (currentLevel === 1) {
+                imgToDraw = lvl1BgImg;
+                w = scaledCampaignBgWidth;
+            } else if (currentLevel === 2) {
+                imgToDraw = lvl2BgImg;
+                w = scaledCampaignBgWidth;
+            }
         }
 
         let drawX = Math.floor(this.x);
@@ -416,7 +424,10 @@ const backgroundLayer = {
             let currentDx = (gameState === 'PLAYING') ? gameSpeed * 0.25 : 0.5;
             this.x -= currentDx;
             
-            let w = (gameMode === 'CAMPAIGN' && currentLevel === 1) ? scaledLvl1BgWidth : scaledBgWidth;
+            let w = scaledBgWidth;
+            if (gameMode === 'CAMPAIGN' && (currentLevel === 1 || currentLevel === 2)) {
+                w = scaledCampaignBgWidth;
+            }
             if (this.x <= -w) {
                 this.x += w; 
             }
@@ -531,8 +542,16 @@ const coins = {
         for (let i = 0; i < this.items.length; i++) {
             let c = this.items[i];
             if (!c.collected) {
-                let bobOffset = Math.sin(frames * 0.1 + c.bobPhase) * 8;
-                ctx.drawImage(coinImg, c.x, c.y + bobOffset, this.size, this.size);
+                let actualY = c.baseY;
+                
+                // V Level 2 kovanec sledi gibanju svoje cevi, v ostalih samo malo lebdi
+                if (gameMode === 'CAMPAIGN' && currentLevel === 2) {
+                    actualY += Math.sin(frames * 0.05 + c.pipeBobPhase) * 45;
+                } else {
+                    actualY += Math.sin(frames * 0.1 + c.coinBobPhase) * 8;
+                }
+
+                ctx.drawImage(coinImg, c.x, actualY, this.size, this.size);
             }
         }
     },
@@ -545,7 +564,13 @@ const coins = {
 
             if (!c.collected) {
                 const bh = bird.getHitbox();
-                let actualY = c.y + Math.sin(frames * 0.1 + c.bobPhase) * 8;
+                
+                let actualY = c.baseY;
+                if (gameMode === 'CAMPAIGN' && currentLevel === 2) {
+                    actualY += Math.sin(frames * 0.05 + c.pipeBobPhase) * 45;
+                } else {
+                    actualY += Math.sin(frames * 0.1 + c.coinBobPhase) * 8;
+                }
                 
                 if (bh.x < c.x + this.size &&
                     bh.x + bh.w > c.x &&
@@ -583,13 +608,19 @@ const pipes = {
         for (let i = 0; i < this.items.length; i++) {
             let p = this.items[i];
             
+            // Izračun dejanske Y pozicije cevi (animacija za Level 2)
+            let currentY = p.baseY;
+            if (gameMode === 'CAMPAIGN' && currentLevel === 2) {
+                currentY += Math.sin(frames * 0.05 + p.bobPhase) * 45;
+            }
+
             ctx.save();
-            ctx.translate(p.x, p.y); 
+            ctx.translate(p.x, currentY); 
             ctx.scale(1, -1); 
             ctx.drawImage(pipeImg, 0, 0, this.width, 512);
             ctx.restore();
 
-            ctx.drawImage(pipeImg, p.x, p.y + this.gap, this.width, 512);
+            ctx.drawImage(pipeImg, p.x, currentY + this.gap, this.width, 512);
         }
     },
     update: function() {
@@ -606,13 +637,19 @@ const pipes = {
             
             let hitGroundY = canvas.height * 0.75; 
             let minPipeHeight = 50; 
-            let maxY = hitGroundY - this.gap - minPipeHeight; 
             
-            let randomY = Math.random() * (maxY - minPipeHeight) + minPipeHeight;
+            // Omejitve generiranja (V Level 2 dodamo buffer, da cevi ne zbežijo v tla ali strop ko lebdijo)
+            let amplitude = (gameMode === 'CAMPAIGN' && currentLevel === 2) ? 45 : 0;
+            let minY = minPipeHeight + amplitude;
+            let maxY = hitGroundY - this.gap - minPipeHeight - amplitude; 
+            
+            let randomY = Math.random() * (maxY - minY) + minY;
+            let pBobPhase = Math.random() * Math.PI * 2; // Naključni ritem za Level 2
             
             this.items.push({
                 x: canvas.width,
-                y: randomY,
+                baseY: randomY, // Shranimo originalno središče
+                bobPhase: pBobPhase,
                 passed: false 
             });
 
@@ -628,8 +665,9 @@ const pipes = {
                 if (distanceTraveled >= triggerDistances[coinsSpawned]) {
                     coins.items.push({
                         x: canvas.width + this.width / 2 - coins.size / 2, 
-                        y: randomY + this.gap / 2 - coins.size / 2,
-                        bobPhase: Math.random() * Math.PI * 2, 
+                        baseY: randomY + this.gap / 2 - coins.size / 2,
+                        pipeBobPhase: pBobPhase, // Podeduje gibanje cevi (Za Level 2)
+                        coinBobPhase: Math.random() * Math.PI * 2, // Za normalno lebdenje
                         collected: false,
                         id: coinsSpawned 
                     });
@@ -642,9 +680,15 @@ const pipes = {
             let p = this.items[i];
             p.x -= gameSpeed; 
 
+            // Izračun trenutnega Y cevi med trki
+            let currentY = p.baseY;
+            if (gameMode === 'CAMPAIGN' && currentLevel === 2) {
+                currentY += Math.sin(frames * 0.05 + p.bobPhase) * 45;
+            }
+
             const bh = bird.getHitbox(); 
-            const top_pipe_tip = p.y;
-            const bottom_pipe_tip = p.y + this.gap;
+            const top_pipe_tip = currentY;
+            const bottom_pipe_tip = currentY + this.gap;
 
             if (bh.x + bh.w > p.x && bh.x < p.x + this.width) {
                 if (bh.y < top_pipe_tip || bh.y + bh.h > bottom_pipe_tip) {
@@ -948,7 +992,7 @@ document.getElementById('lvlBtn2').addEventListener('click', () => resetGame('CA
 document.getElementById('lvlBtn3').addEventListener('click', () => resetGame('CAMPAIGN', 3));
 
 let assetsLoaded = 0;
-const totalAssets = 4; 
+const totalAssets = 5; // Spremenjeno na 5 zaradi lvl2BgImg
 
 function checkAssets() {
     assetsLoaded++;
@@ -964,3 +1008,4 @@ if (floorImg.complete) checkAssets(); else floorImg.onload = checkAssets;
 if (backgroundImg.complete) checkAssets(); else backgroundImg.onload = checkAssets;
 if (coinImg.complete) checkAssets(); else coinImg.onload = checkAssets;
 if (lvl1BgImg.complete) checkAssets(); else lvl1BgImg.onload = checkAssets;
+if (lvl2BgImg.complete) checkAssets(); else lvl2BgImg.onload = checkAssets;
