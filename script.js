@@ -7,6 +7,10 @@ const settingsMenu = document.getElementById('settingsMenu');
 const scoreMenu = document.getElementById('scoreMenu');
 const campaignMenu = document.getElementById('campaignMenu');
 const menuBackground = document.getElementById('menuBackground'); 
+const campaignUI = document.getElementById('campaignUI'); 
+
+const campaignGameOverMenu = document.getElementById('campaignGameOverMenu');
+const levelCompleteMenu = document.getElementById('levelCompleteMenu');
 
 const startBtn = document.getElementById('startBtn');
 const openCampaignBtn = document.getElementById('openCampaignBtn');
@@ -16,15 +20,24 @@ const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 const openScoreBtn = document.getElementById('openScoreBtn');
 const closeScoreBtn = document.getElementById('closeScoreBtn');
 
-const volMinus = document.getElementById('volMinus');
-const volPlus = document.getElementById('volPlus');
-const volumeValue = document.getElementById('volumeValue');
+const retryCampaignBtn = document.getElementById('retryCampaignBtn');
+const campaignToMenuBtn = document.getElementById('campaignToMenuBtn');
+const nextLevelBtn = document.getElementById('nextLevelBtn');
+const victoryToMenuBtn = document.getElementById('victoryToMenuBtn');
 
+const campaignProgressText = document.getElementById('campaignProgressText');
 const bestScoreDisplay = document.getElementById('bestScoreDisplay');
 const currentScoreContainer = document.getElementById('currentScoreContainer');
 const lastScore = document.getElementById('lastScore');
 
-// Campaign Elementi
+const musicVolMinus = document.getElementById('musicVolMinus');
+const musicVolPlus = document.getElementById('musicVolPlus');
+const musicVolumeValue = document.getElementById('musicVolumeValue');
+
+const sfxVolMinus = document.getElementById('sfxVolMinus');
+const sfxVolPlus = document.getElementById('sfxVolPlus');
+const sfxVolumeValue = document.getElementById('sfxVolumeValue');
+
 const worldTitle = document.getElementById('worldTitle');
 const prevPageBtn = document.getElementById('prevPageBtn');
 const nextPageBtn = document.getElementById('nextPageBtn');
@@ -32,30 +45,40 @@ const pageIndicator = document.getElementById('pageIndicator');
 
 // Nalaganje tekstur
 const birdImg = new Image();
-birdImg.src = 'assets/bird.png';
+birdImg.src = 'assets/textures/bird.png';
 
 const pipeImg = new Image();
-pipeImg.src = 'assets/pipe.png';
+pipeImg.src = 'assets/textures/pipe.png';
 
 const floorImg = new Image();
-floorImg.src = 'assets/floor.png';
+floorImg.src = 'assets/backgrounds/floor.png';
 
 const backgroundImg = new Image();
-backgroundImg.src = 'assets/background.png';
+backgroundImg.src = 'assets/backgrounds/background.png';
+
+const coinImg = new Image();
+coinImg.src = 'assets/textures/coin.png';
+
+const lvl1BgImg = new Image();
+lvl1BgImg.src = 'assets/backgrounds/level1.png';
 
 // Nalaganje zvokov
-const flapSound = new Audio('assets/flap.wav');
-const scoreSound = new Audio('assets/score.wav');
-const hitSound = new Audio('assets/hit.wav');
+const flapSound = new Audio('assets/sounds/flap.wav');
+const scoreSound = new Audio('assets/sounds/score.wav'); 
+const hitSound = new Audio('assets/sounds/hit.wav');
+const gameOverSound = new Audio('assets/sounds/gameover.wav'); 
+const victorySound = new Audio('assets/sounds/winner.wav'); 
 
 // Glasba
-const bgMusic = new Audio('assets/music.wav');
+const bgMusic = new Audio('assets/sounds/music.wav');
 bgMusic.loop = true;
 
-const endlessMusic = new Audio('assets/endless.wav');
+const endlessMusic = new Audio('assets/sounds/endless.wav');
 endlessMusic.loop = true;
 
-// Varen ovitek za localStorage 
+const surfaceMusic = new Audio('assets/sounds/surface.wav');
+surfaceMusic.loop = true;
+
 const storage = {
     get: function(key) {
         try { return localStorage.getItem(key); } 
@@ -69,7 +92,10 @@ const storage = {
 
 // --- SPREMENLJIVKE IGRE ---
 let frames = 0;
-let gameState = 'MENU'; // 'MENU', 'READY', 'PLAYING', 'GAMEOVER'
+let gameState = 'MENU'; 
+let gameMode = 'ENDLESS'; 
+let currentLevel = 0; 
+
 let score = 0;
 let bestScore = storage.get('bestScore') || 0;
 bestScoreDisplay.innerText = bestScore;
@@ -77,37 +103,53 @@ bestScoreDisplay.innerText = bestScore;
 let flashAlpha = 0; 
 let blackFadeAlpha = 0; 
 
-// Dinamična hitrost (POPRAVLJENO)
 let gameSpeed = 2; 
 let pipeSpawnTimer = 0; 
-const maxGameSpeed = 4.2; // Znižana absolutna maksimalna hitrost
+const maxGameSpeed = 4.2; 
 
-// Nastavitve glasnosti
-let savedVolume = storage.get('gameVolume');
-let currentVolume = savedVolume !== null ? parseFloat(savedVolume) : 0.5;
+let distanceTraveled = 0;
+let currentLevelLength = 6000; 
+let coinsSpawned = 0;
+let coinsCollectedCurrent = [false, false, false]; 
+
+let savedMusicVolume = storage.get('musicVolume');
+let currentMusicVolume = savedMusicVolume !== null ? parseFloat(savedMusicVolume) : 0.5;
+
+let savedSfxVolume = storage.get('sfxVolume');
+let currentSfxVolume = savedSfxVolume !== null ? parseFloat(savedSfxVolume) : 0.5;
+
 let currentFadeInterval = null;
 
-function updateVolumeDisplay() {
-    volumeValue.innerText = Math.round(currentVolume * 100);
+function updateVolumeDisplays() {
+    musicVolumeValue.innerText = Math.round(currentMusicVolume * 100);
+    sfxVolumeValue.innerText = Math.round(currentSfxVolume * 100);
 }
 
 function updateVolumes() {
-    flapSound.volume = currentVolume;
-    scoreSound.volume = currentVolume;
-    hitSound.volume = currentVolume;
+    flapSound.volume = currentSfxVolume;
+    scoreSound.volume = currentSfxVolume;
+    hitSound.volume = currentSfxVolume;
+    gameOverSound.volume = currentSfxVolume; 
+    victorySound.volume = currentSfxVolume; 
     
     if (!currentFadeInterval) {
+        bgMusic.volume = (gameState === 'MENU') ? currentMusicVolume : 0;
+        
         if (gameState === 'PLAYING' || gameState === 'READY') {
-            endlessMusic.volume = currentVolume;
-            bgMusic.volume = 0;
+            if (gameMode === 'ENDLESS') {
+                endlessMusic.volume = currentMusicVolume;
+                surfaceMusic.volume = 0;
+            } else if (gameMode === 'CAMPAIGN') {
+                surfaceMusic.volume = currentMusicVolume;
+                endlessMusic.volume = 0;
+            }
         } else {
-            bgMusic.volume = currentVolume;
             endlessMusic.volume = 0;
+            surfaceMusic.volume = 0;
         }
     }
 }
 
-// Fade in/out logika za gladko menjavo glasbe
 function crossfadeMusic(fadeOutAudio, fadeInAudio) {
     if (currentFadeInterval) clearInterval(currentFadeInterval);
     
@@ -129,9 +171,9 @@ function crossfadeMusic(fadeOutAudio, fadeInAudio) {
             fadeOutAudio.pause();
         }
         
-        if (fadeInAudio && fadeInAudio.volume < currentVolume) {
+        if (fadeInAudio && fadeInAudio.volume < currentMusicVolume) {
             let newVol = fadeInAudio.volume + fadeStep;
-            fadeInAudio.volume = newVol > currentVolume ? currentVolume : newVol;
+            fadeInAudio.volume = newVol > currentMusicVolume ? currentMusicVolume : newVol;
             fadeComplete = false;
         }
         
@@ -142,7 +184,7 @@ function crossfadeMusic(fadeOutAudio, fadeInAudio) {
     }, 50);
 }
 
-updateVolumeDisplay();
+updateVolumeDisplays();
 updateVolumes();
 
 // --- UI NAVIGACIJA ---
@@ -150,26 +192,60 @@ openSettingsBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     settingsMenu.style.display = 'flex';
 });
-
 closeSettingsBtn.addEventListener('click', () => {
     settingsMenu.style.display = 'none';
     mainMenu.style.display = 'flex';
 });
-
 openScoreBtn.addEventListener('click', () => {
     mainMenu.style.display = 'none';
     scoreMenu.style.display = 'flex';
 });
-
 closeScoreBtn.addEventListener('click', () => {
     scoreMenu.style.display = 'none';
     mainMenu.style.display = 'flex';
 });
 
-// --- CAMPAIGN LOGIKA ---
+// POPRAVLJENA FUNKCIJA ZA VRNITEV V MENI
+function backToMainMenu() {
+    gameState = 'MENU'; // Povemo igri, da se spet nahaja v meniju
+    bird.reset();       // Ponastavimo ptiča, da spet lebdi
+    pipes.reset();
+    coins.reset();
+    
+    const menus = [campaignGameOverMenu, levelCompleteMenu, campaignMenu];
+    menus.forEach(m => m.style.display = 'none');
+    
+    menuBackground.className = 'retro-bg bg-surface';
+    menuBackground.style.backgroundColor = ''; // Počistimo zlato barvo od zmage
+    menuBackground.style.display = 'none';
+    
+    mainMenu.style.transition = 'none';
+    mainMenu.style.opacity = '0';
+    mainMenu.style.display = 'flex';
+    
+    requestAnimationFrame(() => {
+        mainMenu.style.transition = 'opacity 0.8s ease-in-out';
+        mainMenu.style.opacity = '1';
+    });
+    
+    crossfadeMusic(null, bgMusic);
+}
+
+campaignToMenuBtn.addEventListener('click', backToMainMenu);
+victoryToMenuBtn.addEventListener('click', backToMainMenu);
+
+retryCampaignBtn.addEventListener('click', () => {
+    resetGame('CAMPAIGN', currentLevel);
+});
+
+nextLevelBtn.addEventListener('click', () => {
+    resetGame('CAMPAIGN', currentLevel + 1);
+});
+
+// --- CAMPAIGN PROGRESS LOGIKA ---
 let defaultProgress = {
-    1: { unlocked: true,  coins: [true, true, false] }, 
-    2: { unlocked: true,  coins: [false, false, false] },
+    1: { unlocked: true,  coins: [false, false, false] }, 
+    2: { unlocked: false, coins: [false, false, false] },
     3: { unlocked: false, coins: [false, false, false] },
     4: { unlocked: false, coins: [false, false, false] },
     5: { unlocked: false, coins: [false, false, false] },
@@ -260,42 +336,52 @@ nextPageBtn.addEventListener('click', () => {
     }
 });
 
-for (let i = 1; i <= 3; i++) {
-    document.getElementById(`lvlBtn${i}`).addEventListener('click', resetGame);
+function applyMusicVolumeChange() {
+    currentMusicVolume = Math.round(currentMusicVolume * 10) / 10;
+    updateVolumeDisplays();
+    updateVolumes();
+    storage.set('musicVolume', currentMusicVolume);
 }
 
-// --- GLASNOST LOGIKA ---
-function applyVolumeChange() {
-    currentVolume = Math.round(currentVolume * 10) / 10;
-    updateVolumeDisplay();
+musicVolMinus.addEventListener('click', () => {
+    currentMusicVolume -= 0.1;
+    if (currentMusicVolume < 0) currentMusicVolume = 0;
+    applyMusicVolumeChange();
+});
+musicVolPlus.addEventListener('click', () => {
+    currentMusicVolume += 0.1;
+    if (currentMusicVolume > 1) currentMusicVolume = 1;
+    applyMusicVolumeChange();
+});
+
+function applySfxVolumeChange() {
+    currentSfxVolume = Math.round(currentSfxVolume * 10) / 10;
+    updateVolumeDisplays();
     updateVolumes();
-    storage.set('gameVolume', currentVolume);
-    
+    storage.set('sfxVolume', currentSfxVolume);
     if (flapSound.paused) {
         flapSound.currentTime = 0;
         flapSound.play().catch(()=>{});
     }
 }
-
-volMinus.addEventListener('click', () => {
-    currentVolume -= 0.1;
-    if (currentVolume < 0) currentVolume = 0;
-    applyVolumeChange();
+sfxVolMinus.addEventListener('click', () => {
+    currentSfxVolume -= 0.1;
+    if (currentSfxVolume < 0) currentSfxVolume = 0;
+    applySfxVolumeChange();
 });
-
-volPlus.addEventListener('click', () => {
-    currentVolume += 0.1;
-    if (currentVolume > 1) currentVolume = 1;
-    applyVolumeChange();
+sfxVolPlus.addEventListener('click', () => {
+    currentSfxVolume += 0.1;
+    if (currentSfxVolume > 1) currentSfxVolume = 1;
+    applySfxVolumeChange();
 });
 
 function tryPlayMusic() {
     if (gameState === 'MENU') {
-        bgMusic.volume = currentVolume;
+        bgMusic.volume = currentMusicVolume;
         bgMusic.play().catch(() => {
             document.addEventListener('click', () => {
                 if (gameState === 'MENU') {
-                    bgMusic.volume = currentVolume;
+                    bgMusic.volume = currentMusicVolume;
                     bgMusic.play().catch(() => {});
                 }
             }, { once: true });
@@ -305,24 +391,34 @@ function tryPlayMusic() {
 tryPlayMusic();
 
 // --- SCROLLING OBJEKTI ---
-const scaledImageWidth = (1920 / 1085) * 512; 
+const scaledBgWidth = Math.ceil((1920 / 1085) * 512); 
+const scaledLvl1BgWidth = Math.ceil((576 / 324) * 512); 
 
 const backgroundLayer = {
     x: 0,
     y: 0,
-    width: scaledImageWidth,
-    height: 512,
     
     draw: function() {
-        ctx.drawImage(backgroundImg, this.x, this.y, this.width, this.height);
-        ctx.drawImage(backgroundImg, this.x + this.width, this.y, this.width, this.height);
+        let imgToDraw = backgroundImg;
+        let w = scaledBgWidth;
+        
+        if (gameMode === 'CAMPAIGN' && currentLevel === 1) {
+            imgToDraw = lvl1BgImg;
+            w = scaledLvl1BgWidth;
+        }
+
+        let drawX = Math.floor(this.x);
+        ctx.drawImage(imgToDraw, drawX, this.y, w, 512);
+        ctx.drawImage(imgToDraw, drawX + w - 1, this.y, w, 512);
     },
     update: function() {
         if (gameState === 'PLAYING' || gameState === 'MENU' || gameState === 'READY') {
             let currentDx = (gameState === 'PLAYING') ? gameSpeed * 0.25 : 0.5;
             this.x -= currentDx;
-            if (this.x <= -this.width) {
-                this.x = 0;
+            
+            let w = (gameMode === 'CAMPAIGN' && currentLevel === 1) ? scaledLvl1BgWidth : scaledBgWidth;
+            if (this.x <= -w) {
+                this.x += w; 
             }
         }
     }
@@ -331,19 +427,20 @@ const backgroundLayer = {
 const floorLayer = {
     x: 0,
     y: 0, 
-    width: scaledImageWidth,
+    width: scaledBgWidth, 
     height: 512,
     
     draw: function() {
-        ctx.drawImage(floorImg, this.x, this.y, this.width, this.height);
-        ctx.drawImage(floorImg, this.x + this.width, this.y, this.width, this.height);
+        let drawX = Math.floor(this.x);
+        ctx.drawImage(floorImg, drawX, this.y, this.width, this.height);
+        ctx.drawImage(floorImg, drawX + this.width - 1, this.y, this.width, this.height);
     },
     update: function() {
         if (gameState === 'PLAYING' || gameState === 'MENU' || gameState === 'READY') {
             let currentDx = (gameState === 'PLAYING') ? gameSpeed : 2;
             this.x -= currentDx;
             if (this.x <= -this.width) {
-                this.x = 0;
+                this.x += this.width;
             }
         }
         
@@ -381,7 +478,6 @@ const bird = {
 
     draw: function() {
         let rotation = 0;
-        
         if (gameState === 'GAMEOVER' && this.velocity === 0) {
             rotation = Math.PI / 2;
         } else if (this.velocity > 0) {
@@ -426,6 +522,57 @@ const bird = {
     }
 };
 
+// KOVANCI
+const coins = {
+    items: [],
+    size: 30, 
+    
+    draw: function() {
+        for (let i = 0; i < this.items.length; i++) {
+            let c = this.items[i];
+            if (!c.collected) {
+                let bobOffset = Math.sin(frames * 0.1 + c.bobPhase) * 8;
+                ctx.drawImage(coinImg, c.x, c.y + bobOffset, this.size, this.size);
+            }
+        }
+    },
+    update: function() {
+        if (gameState !== 'PLAYING') return;
+
+        for (let i = 0; i < this.items.length; i++) {
+            let c = this.items[i];
+            c.x -= gameSpeed;
+
+            if (!c.collected) {
+                const bh = bird.getHitbox();
+                let actualY = c.y + Math.sin(frames * 0.1 + c.bobPhase) * 8;
+                
+                if (bh.x < c.x + this.size &&
+                    bh.x + bh.w > c.x &&
+                    bh.y < actualY + this.size &&
+                    bh.h + bh.y > actualY) {
+                    
+                    c.collected = true;
+                    coinsCollectedCurrent[c.id] = true;
+                    
+                    document.getElementById(`uiCoin${c.id}`).classList.add('collected');
+                    
+                    scoreSound.currentTime = 0;
+                    scoreSound.play().catch(e => {});
+                }
+            }
+
+            if (c.x + this.size <= 0) {
+                this.items.shift();
+                i--;
+            }
+        }
+    },
+    reset: function() {
+        this.items = [];
+    }
+}
+
 // Cevi
 const pipes = {
     items: [],
@@ -448,8 +595,13 @@ const pipes = {
     update: function() {
         if (gameState !== 'PLAYING') return; 
 
+        let stopSpawning = false;
+        if (gameMode === 'CAMPAIGN' && distanceTraveled > currentLevelLength - 300) {
+            stopSpawning = true;
+        }
+
         pipeSpawnTimer += gameSpeed; 
-        if (pipeSpawnTimer >= 220) {
+        if (pipeSpawnTimer >= 220 && !stopSpawning) {
             pipeSpawnTimer = 0; 
             
             let hitGroundY = canvas.height * 0.75; 
@@ -463,6 +615,27 @@ const pipes = {
                 y: randomY,
                 passed: false 
             });
+
+            if (gameMode === 'CAMPAIGN' && coinsSpawned < 3) {
+                let spawnOffset = canvas.width - bird.x; 
+
+                let triggerDistances = [
+                    (currentLevelLength * 0.25) - spawnOffset,
+                    (currentLevelLength * 0.50) - spawnOffset,
+                    (currentLevelLength * 0.75) - spawnOffset
+                ];
+
+                if (distanceTraveled >= triggerDistances[coinsSpawned]) {
+                    coins.items.push({
+                        x: canvas.width + this.width / 2 - coins.size / 2, 
+                        y: randomY + this.gap / 2 - coins.size / 2,
+                        bobPhase: Math.random() * Math.PI * 2, 
+                        collected: false,
+                        id: coinsSpawned 
+                    });
+                    coinsSpawned++;
+                }
+            }
         }
 
         for (let i = 0; i < this.items.length; i++) {
@@ -482,8 +655,10 @@ const pipes = {
             if (p.x + this.width < bird.x && !p.passed) {
                 score++;
                 p.passed = true; 
-                scoreSound.currentTime = 0;
-                scoreSound.play().catch(e => {});
+                if (gameMode === 'ENDLESS') {
+                    scoreSound.currentTime = 0;
+                    scoreSound.play().catch(e => {});
+                }
             }
 
             if (p.x + this.width <= 0) {
@@ -497,25 +672,93 @@ const pipes = {
     }
 };
 
+// ZMAGA V NIVOJU
+function levelComplete() {
+    if (gameState === 'GAMEOVER' || gameState === 'VICTORY') return; 
+    gameState = 'VICTORY';
+
+    for (let i = 0; i < 3; i++) {
+        if (coinsCollectedCurrent[i]) {
+            campaignProgress[currentLevel].coins[i] = true;
+        }
+        
+        const vCoin = document.getElementById(`victoryCoin${i}`);
+        if (coinsCollectedCurrent[i]) vCoin.classList.add('collected');
+        else vCoin.classList.remove('collected');
+    }
+    
+    if (currentLevel < 9) {
+        campaignProgress[currentLevel + 1].unlocked = true;
+        nextLevelBtn.style.display = 'block';
+    } else {
+        nextLevelBtn.style.display = 'none'; 
+    }
+    
+    storage.set('campaignProgress', JSON.stringify(campaignProgress));
+    
+    surfaceMusic.pause();
+    surfaceMusic.currentTime = 0;
+
+    setTimeout(() => {
+        let fadeInterval = setInterval(() => {
+            blackFadeAlpha += 0.05;
+            
+            if (blackFadeAlpha >= 1) {
+                clearInterval(fadeInterval);
+                
+                bird.reset();
+                pipes.reset();
+                coins.reset();
+                
+                campaignUI.style.display = 'none';
+                
+                menuBackground.className = 'retro-bg';
+                menuBackground.style.backgroundColor = '#b08d13'; 
+                menuBackground.style.display = 'block'; 
+                
+                levelCompleteMenu.style.transition = 'none';
+                levelCompleteMenu.style.opacity = '0';
+                levelCompleteMenu.style.display = 'flex';
+                
+                updateCampaignUI(); 
+                
+                victorySound.currentTime = 0;
+                victorySound.play().catch(e => {});
+                
+                requestAnimationFrame(() => {
+                    levelCompleteMenu.style.transition = 'opacity 0.8s ease-in-out';
+                    levelCompleteMenu.style.opacity = '1';
+                    blackFadeAlpha = 0; 
+                });
+            }
+        }, 30);
+    }, 1000); 
+}
+
+// PORAZ
 function gameOver() {
-    if (gameState === 'GAMEOVER') return; 
+    if (gameState === 'GAMEOVER' || gameState === 'VICTORY') return; 
     gameState = 'GAMEOVER';
 
     hitSound.play().catch(e => {});
+    
     flashAlpha = 1; 
     
     if(currentFadeInterval) clearInterval(currentFadeInterval);
     endlessMusic.pause();
     endlessMusic.currentTime = 0;
+    surfaceMusic.pause();
+    surfaceMusic.currentTime = 0;
     
-    if (score > bestScore) {
-        bestScore = score;
-        storage.set('bestScore', bestScore); 
-        bestScoreDisplay.innerText = bestScore;
+    if (gameMode === 'ENDLESS') {
+        if (score > bestScore) {
+            bestScore = score;
+            storage.set('bestScore', bestScore); 
+            bestScoreDisplay.innerText = bestScore;
+        }
+        lastScore.innerText = score;
+        currentScoreContainer.style.display = 'block'; 
     }
-    
-    lastScore.innerText = score;
-    currentScoreContainer.style.display = 'block'; 
     
     setTimeout(() => {
         let fadeInterval = setInterval(() => {
@@ -526,41 +769,74 @@ function gameOver() {
                 
                 bird.reset();
                 pipes.reset();
+                coins.reset();
                 gameState = 'MENU';
                 
+                campaignUI.style.display = 'none';
                 menuBackground.style.display = 'none'; 
                 
-                mainMenu.style.transition = 'none';
-                mainMenu.style.opacity = '0';
-                mainMenu.style.display = 'flex';
+                let targetMenu = mainMenu;
+                
+                if(gameMode === 'CAMPAIGN') {
+                    targetMenu = campaignGameOverMenu;
+                    menuBackground.style.display = 'block'; 
+                    let progressPercent = Math.min((distanceTraveled / currentLevelLength) * 100, 100).toFixed(0);
+                    campaignProgressText.innerText = `${progressPercent}%`;
+                }
+
+                targetMenu.style.transition = 'none';
+                targetMenu.style.opacity = '0';
+                targetMenu.style.display = 'flex';
+                
+                if (gameMode === 'CAMPAIGN') {
+                    gameOverSound.currentTime = 0;
+                    gameOverSound.play().catch(e => {});
+                }
                 
                 requestAnimationFrame(() => {
-                    mainMenu.style.transition = 'opacity 0.8s ease-in-out';
-                    mainMenu.style.opacity = '1';
-                    
+                    targetMenu.style.transition = 'opacity 0.8s ease-in-out';
+                    targetMenu.style.opacity = '1';
                     blackFadeAlpha = 0; 
                 });
                 
-                crossfadeMusic(null, bgMusic);
+                if (gameMode === 'ENDLESS') {
+                    crossfadeMusic(null, bgMusic);
+                }
             }
         }, 30);
     }, 1200);
 }
 
-function resetGame() {
+function resetGame(mode, level = 0) {
+    gameMode = mode;
+    currentLevel = level;
+    
     bird.reset();
     pipes.reset();
+    coins.reset();
     score = 0;
     frames = 0;
+    distanceTraveled = 0;
     
-    gameSpeed = 2; 
+    if (gameMode === 'CAMPAIGN') {
+        gameSpeed = 2.5; 
+        coinsSpawned = 0;
+        coinsCollectedCurrent = [false, false, false];
+        
+        document.getElementById('progressFill').style.width = '0%';
+        for(let i=0; i<3; i++) {
+            document.getElementById(`uiCoin${i}`).classList.remove('collected');
+        }
+    } else {
+        gameSpeed = 2; 
+    }
+    
     pipeSpawnTimer = 0;
-    
     flashAlpha = 0;
     blackFadeAlpha = 0; 
     gameState = 'READY'; 
     
-    const menus = [menuBackground, mainMenu, settingsMenu, scoreMenu, campaignMenu];
+    const menus = [menuBackground, mainMenu, settingsMenu, scoreMenu, campaignMenu, campaignGameOverMenu, levelCompleteMenu];
     menus.forEach(menu => {
         menu.style.transition = 'opacity 0.4s ease';
         menu.style.opacity = '0';
@@ -573,7 +849,13 @@ function resetGame() {
             menu.style.transition = 'none';
         });
         
-        crossfadeMusic(bgMusic, endlessMusic);
+        if (gameMode === 'CAMPAIGN') {
+            campaignUI.style.display = 'flex';
+            crossfadeMusic(bgMusic, surfaceMusic);
+        } else {
+            crossfadeMusic(bgMusic, endlessMusic);
+        }
+        
         gameState = 'PLAYING'; 
     }, 400); 
 }
@@ -598,30 +880,44 @@ function draw(now) {
         pipes.update();
         pipes.draw();
 
+        coins.update();
+        coins.draw();
+
         floorLayer.update();
         floorLayer.draw();
 
         bird.update();
         bird.draw();
 
-        if (gameState === 'PLAYING' || gameState === 'GAMEOVER' || gameState === 'READY') {
+        if (gameState === 'PLAYING' || gameState === 'GAMEOVER' || gameState === 'VICTORY' || gameState === 'READY') {
             if (gameState === 'PLAYING') {
                 frames++;
-                // Počasi, a vztrajno pospešujemo igro do max omejitve (veliko počasneje kot prej)
-                if (gameSpeed < maxGameSpeed) {
+                distanceTraveled += gameSpeed; 
+                
+                if (gameMode === 'ENDLESS' && gameSpeed < maxGameSpeed) {
                     gameSpeed += 0.0002; 
+                }
+
+                if (gameMode === 'CAMPAIGN') {
+                    let progressPercent = Math.min((distanceTraveled / currentLevelLength) * 100, 100);
+                    document.getElementById('progressFill').style.width = progressPercent + '%';
+
+                    if (distanceTraveled >= currentLevelLength) {
+                        levelComplete();
+                    }
                 }
             }
 
-            ctx.fillStyle = 'white';
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 4;
-            ctx.font = '30px "Press Start 2P"'; 
-            
-            ctx.textAlign = 'center'; 
-            ctx.strokeText(score, canvas.width / 2, 70);
-            ctx.fillText(score, canvas.width / 2, 70);
-            ctx.textAlign = 'start'; 
+            if (gameMode === 'ENDLESS') {
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 4;
+                ctx.font = '30px "Press Start 2P"'; 
+                ctx.textAlign = 'center'; 
+                ctx.strokeText(score, canvas.width / 2, 70);
+                ctx.fillText(score, canvas.width / 2, 70);
+                ctx.textAlign = 'start'; 
+            }
         }
 
         if (flashAlpha > 0) {
@@ -631,7 +927,8 @@ function draw(now) {
         }
 
         if (blackFadeAlpha > 0) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${blackFadeAlpha})`;
+            let fadeColor = gameState === 'VICTORY' ? '255, 255, 255' : '0, 0, 0';
+            ctx.fillStyle = `rgba(${fadeColor}, ${blackFadeAlpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
     }
@@ -643,14 +940,19 @@ canvas.addEventListener('mousedown', () => {
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') bird.flap();
 });
-startBtn.addEventListener('click', resetGame);
+
+startBtn.addEventListener('click', () => resetGame('ENDLESS'));
+
+document.getElementById('lvlBtn1').addEventListener('click', () => resetGame('CAMPAIGN', 1));
+document.getElementById('lvlBtn2').addEventListener('click', () => resetGame('CAMPAIGN', 2));
+document.getElementById('lvlBtn3').addEventListener('click', () => resetGame('CAMPAIGN', 3));
 
 let assetsLoaded = 0;
-const totalAssets = 2; 
+const totalAssets = 4; 
 
 function checkAssets() {
     assetsLoaded++;
-    if (assetsLoaded === totalAssets) {
+    if (assetsLoaded >= totalAssets) {
         requestAnimationFrame(function(time) {
             then = time;
             draw(time);
@@ -658,8 +960,7 @@ function checkAssets() {
     }
 }
 
-if (floorImg.complete) checkAssets();
-else floorImg.onload = checkAssets;
-
-if (backgroundImg.complete) checkAssets();
-else backgroundImg.onload = checkAssets;
+if (floorImg.complete) checkAssets(); else floorImg.onload = checkAssets;
+if (backgroundImg.complete) checkAssets(); else backgroundImg.onload = checkAssets;
+if (coinImg.complete) checkAssets(); else coinImg.onload = checkAssets;
+if (lvl1BgImg.complete) checkAssets(); else lvl1BgImg.onload = checkAssets;
